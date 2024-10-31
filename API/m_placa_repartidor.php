@@ -1,11 +1,35 @@
 <?php
-include 'conexion.php';
-$c_id_DocumentoPersona=$_GET['id_DocumentoPersona'];
-$c_rep_Placa=$_GET['rep_Placa'];
+include 'conexion.php';  
+$conexion->set_charset('utf8');
 
-$consulta="CALL sp_m_placa_repartidor('".$c_id_DocumentoPersona."', '".$c_rep_Placa."') ";
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['id_DocumentoPersona']) && isset($_GET['rep_Placa'])) {
+        $c_id_DocumentoPersona = $_GET['id_DocumentoPersona'];
+        $c_rep_Placa = $_GET['rep_Placa'];
+        
+        if ($stmt = $conexion->prepare("CALL sp_m_placa_repartidor(?, ?)")) {
+            $stmt->bind_param('ss', $c_id_DocumentoPersona, $c_rep_Placa);
+            
+            if ($stmt->execute()) {
+                $stmt->store_result();  
+                if ($stmt->affected_rows > 0) {
+                    echo json_encode(['success' => 'Placa del repartidor actualizada correctamente']);
+                } else {
+                    echo json_encode(['error' => 'No se encontró el repartidor o no hubo cambios']);
+                }
+            } else {
+                echo json_encode(['error' => 'Error en la ejecución de la consulta: ' . $stmt->error]);
+            }
+            $stmt->close();
+        } else {
+            echo json_encode(['error' => 'Error al preparar la consulta: ' . $conexion->error]);
+        }
+    } else {
+        echo json_encode(['error' => 'No se proporcionaron todos los parámetros requeridos']);
+    }
+} else {
+    echo json_encode(['error' => 'Método no permitido. Se requiere una solicitud GET']);
+}
 
-mysqli_query($conexion,$consulta) or die (mysqli_error($conexion));
-mysqli_close($conexion);  
-
+$conexion->close();
 ?>
