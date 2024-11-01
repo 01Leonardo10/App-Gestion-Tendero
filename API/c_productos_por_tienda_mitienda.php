@@ -1,37 +1,58 @@
 <?php
 include 'conexion.php';
+$conexion->set_charset('utf8');
 
-$json=array();
-    if(isset($_GET["p_categoria"])&&isset($_GET["p_idTienda"])){
-        $p_categoria=$_GET['p_categoria'];
-        $p_idTienda=$_GET['p_idTienda'];
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['p_categoria']) && isset($_GET['p_idTienda'])) {
+        $p_categoria = $_GET['p_categoria'];
+        $p_idTienda = $_GET['p_idTienda'];
 
-        if(empty($p_categoria)){
+        // Valor predeterminado para p_categoria si está vacío
+        if (empty($p_categoria)) {
             $p_categoria = "1";
         }
 
-        $consulta="CALL sp_c_productos_por_tienda_mitienda('{$p_categoria}', '{$p_idTienda}')";
-        $resultado=mysqli_query($conexion,$consulta);
+        if ($stmt = $conexion->prepare("CALL sp_c_productos_por_tienda_mitienda(?, ?)")) {
+            $stmt->bind_param('ss', $p_categoria, $p_idTienda);
+            
+            if ($stmt->execute()) {
+                $resultado = $stmt->get_result();
+                $json = array();
+                $json['productos_tienda'] = array();
+                
+                while ($request = $resultado->fetch_assoc()) {
+                    $result = array(
+                        "idListadoProductoTienda" => $request['idListadoProductoTienda'],
+                        "lptDescripcionProductoTienda" => $request['lptDescripcionProductoTienda'],
+                        "lptStock" => $request['lptStock'],
+                        "lptUnidadMedida" => $request['lptUnidadMedida'],
+                        "lptStockMinimo" => $request['lptStockMinimo'],
+                        "lptImagen1" => $request['lptImagen1'],
+                        "lptImagen2" => $request['lptImagen2'],
+                        "lptImagen3" => $request['lptImagen3'],
+                        "lptPrecioCompra" => $request['lptPrecioCompra'],
+                        "lptPrecioVenta" => $request['lptPrecioVenta'],
+                        "idProducto" => $request['idProducto'],
+                        "idCategoriaProducto" => $request['idCategoriaProducto'],
+                        "cpNombre" => $request['cpNombre']
+                    );
+                    $json['productos_tienda'][] = $result;
+                }
 
-        while($request= mysqli_fetch_array($resultado)){
-            $result["idListadoProductoTienda"]=$request['idListadoProductoTienda'];
-            $result["lptDescripcionProductoTienda"]=$request['lptDescripcionProductoTienda'];
-            $result["lptStock"]=$request['lptStock'];
-            $result["lptUnidadMedida"]=$request['lptUnidadMedida'];
-            $result["lptStockMinimo"]=$request['lptStockMinimo'];
-            $result["lptImagen1"]=$request['lptImagen1'];
-            $result["lptImagen2"]=$request['lptImagen2'];
-            $result["lptImagen3"]=$request['lptImagen3'];
-            $result["lptPrecioCompra"]=$request['lptPrecioCompra'];
-            $result["lptPrecioVenta"]=$request['lptPrecioVenta'];
-            $result["idProducto"]=$request['idProducto'];
-            $result["idCategoriaProducto"]=$request['idCategoriaProducto'];
-            $result["cpNombre"]=$request['cpNombre'];
-            $json['productos_tienda'][]=$result;
+                echo json_encode($json);
+            } else {
+                echo json_encode(['error' => 'Error en la ejecución de la consulta: ' . $stmt->error]);
+            }
+            $stmt->close();
+        } else {
+            echo json_encode(['error' => 'Error al preparar la consulta: ' . $conexion->error]);
         }
-        mysqli_close($conexion);
-        echo json_encode($json);
-    }else{
-        die("Error en la conexion");
+    } else {
+        echo json_encode(['error' => 'No se proporcionaron los parámetros requeridos p_categoria o p_idTienda.']);
     }
+} else {
+    echo json_encode(['error' => 'Método no permitido. Se requiere una solicitud GET.']);
+}
+
+$conexion->close();
 ?>

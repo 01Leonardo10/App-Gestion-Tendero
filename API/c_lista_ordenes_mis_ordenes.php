@@ -1,34 +1,45 @@
-<?php
+<?<?php
 include 'conexion.php';
+$conexion->set_charset('utf8');
 
-$json=array();
+$json = array();
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['sp_idTienda'], $_GET['sp_idOrden'], $_GET['sp_odEstado'], $_GET['sp_odFechaPedido'])) {
+        $sp_idTienda = $_GET['sp_idTienda'];
+        $sp_idOrden = $_GET['sp_idOrden'];
+        $sp_odEstado = $_GET['sp_odEstado'];
+        $sp_odFechaPedido = $_GET['sp_odFechaPedido'];
 
+        if ($stmt = $conexion->prepare("CALL sp_c_lista_ordenes_mis_ordenes(?, ?, ?, ?)")) {
+            $stmt->bind_param('iiss', $sp_idTienda, $sp_idOrden, $sp_odEstado, $sp_odFechaPedido);
 
-    $sp_idTienda=$_GET["sp_idTienda"];
-    $sp_idOrden=$_GET["sp_idOrden"];
-    $sp_odEstado=$_GET["sp_odEstado"];
-    $sp_odFechaPedido=$_GET["sp_odFechaPedido"];
+            if ($stmt->execute()) {
+                $resultado = $stmt->get_result();
+                while ($registro = $resultado->fetch_assoc()) {
+                    $result["idOrden"] = $registro['idOrden'];
+                    $result["odFechaPedido"] = $registro['odFechaPedido'];
+                    $result["odHoraPedido"] = $registro['odHoraPedido'];
+                    $result["perNombreCompleto"] = $registro['perNombreCompleto'];
+                    $result["odEstado"] = $registro['odEstado'];
+                    $result["idRepartidor"] = $registro['idRepartidor'];
+                    $result["repNombres"] = $registro['repNombres'];
+                    $json['lista_ordenes'][] = $result;
+                }
+            } else {
+                $json['error'] = 'Error en la ejecución de la consulta: ' . $stmt->error;
+            }
+            $stmt->close();
+        } else {
+            $json['error'] = 'Error al preparar la consulta: ' . $conexion->error;
+        }
+    } else {
+        $json['error'] = 'Faltan parámetros requeridos.';
+    }
+} else {
+    $json['error'] = 'Método no permitido. Se requiere una solicitud GET.';
+}
 
-    $consulta="call sp_c_lista_ordenes_mis_ordenes( {$sp_idTienda} , {$sp_idOrden} , '{$sp_odEstado}', '{$sp_odFechaPedido}');";
-
-
-    $resultado=mysqli_query($conexion,$consulta);
-
-    while($registro=mysqli_fetch_array($resultado)){
-        $result["idOrden"]=$registro['idOrden'];
-        $result["odFechaPedido"]=$registro['odFechaPedido'];
-        $result["odHoraPedido"]=$registro['odHoraPedido'];
-        $result["perNombreCompleto"]=($registro['perNombreCompleto']);
-        $result["odEstado"]=($registro['odEstado']);
-        $result["idRepartidor"]=($registro['idRepartidor']);
-        $result["repNombres"]=($registro['repNombres']);
-        $json['lista_ordenes'][]=$result;
-    };
-    
-    mysqli_close($conexion);
-    echo json_encode($json);
-    
-
-
+$conexion->close();
+echo json_encode($json);
 ?>

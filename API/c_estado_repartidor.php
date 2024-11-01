@@ -1,19 +1,43 @@
 <?php
 include 'conexion.php';
-$c_id_DocumentoPersona=$_GET['id_DocumentoPersona'];
+$conexion->set_charset('utf8');
 
 $json = array();
-        $consulta="CALL sp_c_estado_repartidor('".$c_id_DocumentoPersona."') ";
-        $resultado = mysqli_query($conexion,$consulta);
-        while($registro = mysqli_fetch_array($resultado)){
-        $result["idDocumentoPersona"]=$registro['idDocumentoPersona'];
-        $result["perNombres"]=$registro['perNombres'];
-        $result["perApellidos"]=$registro['perApellidos'];
-        $result["repEstado"]=$registro['repEstado'];  
-        $json['consulta'][]=$result;      
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['id_DocumentoPersona'])) {
+        $c_id_DocumentoPersona = $_GET['id_DocumentoPersona'];
+
+        if ($stmt = $conexion->prepare("CALL sp_c_estado_repartidor(?)")) {
+            $stmt->bind_param('s', $c_id_DocumentoPersona); // Cambia 's' a 'i' si id_DocumentoPersona es un entero
+
+            if ($stmt->execute()) {
+                $resultado = $stmt->get_result();
+                
+                while ($registro = $resultado->fetch_assoc()) {
+                    $result = array(
+                        "idDocumentoPersona" => $registro['idDocumentoPersona'],
+                        "perNombres" => $registro['perNombres'],
+                        "perApellidos" => $registro['perApellidos'],
+                        "repEstado" => $registro['repEstado'],
+                    );
+                    $json['consulta'][] = $result;
+                }
+            } else {
+                $json['error'] = 'Error en la ejecución de la consulta: ' . $stmt->error;
+            }
+
+            $stmt->close();
+        } else {
+            $json['error'] = 'Error al preparar la consulta: ' . $conexion->error;
         }
+    } else {
+        $json['error'] = 'Faltan parámetros requeridos.';
+    }
+} else {
+    $json['error'] = 'Método no permitido. Se requiere una solicitud GET.';
+}
 
-        mysqli_close($conexion);
-        echo json_encode($json);
-
+mysqli_close($conexion);
+echo json_encode($json);
 ?>

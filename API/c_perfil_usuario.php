@@ -1,25 +1,49 @@
 <?php
 include 'conexion.php';
-$c_id_DocumentoPersona=$_GET['id_DocumentoPersona'];
+$conexion->set_charset('utf8');
 
-$json = array();
-        $consulta="CALL sp_c_perfil_usuario('".$c_id_DocumentoPersona."') ";
-        $resultado = mysqli_query($conexion,$consulta);
-        while($registro = mysqli_fetch_array($resultado)){
-        $result["idDocumentoPersona"]=$registro['idDocumentoPersona'];
-        $result["perNombres"]=$registro['perNombres'];
-        $result["perApellidos"]=$registro['perApellidos'];
-        $result["perNumeroCelular"]=$registro['perNumeroCelular'];  
-        $result["perUbiLatitud"]=$registro['perUbiLatitud'];
-        $result["perUbiLongitud"]=$registro['perUbiLongitud'];
-        $result["repEstado"]=$registro['repEstado'];
-        $result["repTipoVehiculo"]=$registro['repTipoVehiculo'];
-        $result["repNombreVehiculo"]=$registro['repNombreVehiculo']; 
-        $result["repPlaca"]=$registro['repPlaca']; 
-        $json['consulta'][]=$result;      
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['id_DocumentoPersona'])) {
+        $c_id_DocumentoPersona = $_GET['id_DocumentoPersona'];
+        
+        if ($stmt = $conexion->prepare("CALL sp_c_perfil_usuario(?)")) {
+            $stmt->bind_param('s', $c_id_DocumentoPersona);
+            
+            if ($stmt->execute()) {
+                $resultado = $stmt->get_result();
+                $json = array();
+                $json['consulta'] = array();
+                
+                while ($registro = $resultado->fetch_assoc()) {
+                    $result = array(
+                        "idDocumentoPersona" => $registro['idDocumentoPersona'],
+                        "perNombres" => $registro['perNombres'],
+                        "perApellidos" => $registro['perApellidos'],
+                        "perNumeroCelular" => $registro['perNumeroCelular'],
+                        "perUbiLatitud" => $registro['perUbiLatitud'],
+                        "perUbiLongitud" => $registro['perUbiLongitud'],
+                        "repEstado" => $registro['repEstado'],
+                        "repTipoVehiculo" => $registro['repTipoVehiculo'],
+                        "repNombreVehiculo" => $registro['repNombreVehiculo'],
+                        "repPlaca" => $registro['repPlaca']
+                    );
+                    $json['consulta'][] = $result;
+                }
+
+                echo json_encode($json);
+            } else {
+                echo json_encode(['error' => 'Error en la ejecución de la consulta: ' . $stmt->error]);
+            }
+            $stmt->close();
+        } else {
+            echo json_encode(['error' => 'Error al preparar la consulta: ' . $conexion->error]);
         }
+    } else {
+        echo json_encode(['error' => 'No se proporcionó el parámetro requerido id_DocumentoPersona.']);
+    }
+} else {
+    echo json_encode(['error' => 'Método no permitido. Se requiere una solicitud GET.']);
+}
 
-        mysqli_close($conexion);
-        echo json_encode($json);
-
+$conexion->close();
 ?>

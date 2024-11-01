@@ -1,31 +1,51 @@
 <?php
 include 'conexion.php';
+$conexion->set_charset('utf8');
 
-$json=array();
-    if(isset($_GET["p_idTienda"])){
-        $p_idTienda=$_GET['p_idTienda'];
-        $consulta="CALL sp_c_informacion_por_tienda_registrotienda('{$p_idTienda}')";
-        $resultado=mysqli_query($conexion,$consulta);
-        while($request=mysqli_fetch_array($resultado)){
-            $result["tieNombre"]=$request['tieNombre'];
-            $result["tieImagenurl"]= $request['tieImagen'];
-            $result["tieURLWeb"]=$request['tieURLWeb'];
-            $result["tieDescripcion"]=$request['tieDescripcion'];
-            $result["tieCorreo"]=$request['tieCorreo'];
-            $result["tieTelefono"]=$request['tieTelefono'];
-            $result["tieDireccion"]=$request['tieDireccion'];
-            $result["tieCiudad"]=$request['tieCiudad'];
-            $result["tieEstado"]=$request['tieEstado'];
-            $result["tieVentasMensuales"]=$request['tieVentasMensuales'];
-            $result["tieInventarioEstimado"]=$request['tieInventarioEstimado'];
-            $result["tieLatitud"]=$request['tieLatitud'];
-            $result["tieLongitud"]=$request['tieLongitud'];
-            $result["idRubroTienda"]=$request['idRubroTienda'];
-            $json['tiendas_info'][]=$result;
+$json = array();
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET["p_idTienda"])) {
+        $p_idTienda = $_GET['p_idTienda'];
+
+        if ($stmt = $conexion->prepare("CALL sp_c_informacion_por_tienda_registrotienda(?)")) {
+            $stmt->bind_param('s', $p_idTienda); // Cambia 's' a 'i' si p_idTienda es un entero
+
+            if ($stmt->execute()) {
+                $resultado = $stmt->get_result();
+                while ($request = $resultado->fetch_assoc()) {
+                    $result = array(
+                        "tieNombre" => $request['tieNombre'],
+                        "tieImagenurl" => $request['tieImagen'],
+                        "tieURLWeb" => $request['tieURLWeb'],
+                        "tieDescripcion" => $request['tieDescripcion'],
+                        "tieCorreo" => $request['tieCorreo'],
+                        "tieTelefono" => $request['tieTelefono'],
+                        "tieDireccion" => $request['tieDireccion'],
+                        "tieCiudad" => $request['tieCiudad'],
+                        "tieEstado" => $request['tieEstado'],
+                        "tieVentasMensuales" => $request['tieVentasMensuales'],
+                        "tieInventarioEstimado" => $request['tieInventarioEstimado'],
+                        "tieLatitud" => $request['tieLatitud'],
+                        "tieLongitud" => $request['tieLongitud'],
+                        "idRubroTienda" => $request['idRubroTienda']
+                    );
+                    $json['tiendas_info'][] = $result;
+                }
+            } else {
+                $json['error'] = 'Error en la ejecución de la consulta: ' . $stmt->error;
+            }
+            $stmt->close();
+        } else {
+            $json['error'] = 'Error al preparar la consulta: ' . $conexion->error;
         }
-        mysqli_close($conexion);
-        echo json_encode($json);
-    }else{
-        die("Fallo en consultar informacion de tienda");
+    } else {
+        $json['error'] = 'Faltan parámetros requeridos.';
     }
+} else {
+    $json['error'] = 'Método no permitido. Se requiere una solicitud GET.';
+}
+
+$conexion->close();
+echo json_encode($json);
 ?>

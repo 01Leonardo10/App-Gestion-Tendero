@@ -1,22 +1,47 @@
 <?php
-
 include 'conexion.php';
-$c_id_Aprendizaje=$_GET['id_Aprendizaje'];
-$c_id_DocumentoPersona=$_GET['id_DocumentoPersona'];
+$conexion->set_charset('utf8');
 
-$json = array();
-        $consulta="CALL sp_m_estado_favorito_aprendizaje({$c_id_Aprendizaje},{$c_id_DocumentoPersona})";
-        $resultado = mysqli_query($conexion,$consulta);
-        while($registro = mysqli_fetch_array($resultado)){
-        $result["perapEstado"]=$registro['perapEstado'];
-        $result["perapFechaInscripcion"]=$registro['perapFechaInscripcion'];
-        $result["idAprendizaje"]=$registro['idAprendizaje'];
-        $result["idDocumentoPersona"]=$registro['idDocumentoPersona'];
-
-        $json['update_favoritos'][]=$result;   
+if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['id_Aprendizaje']) && isset($_GET['id_DocumentoPersona'])) {
+        $c_id_Aprendizaje = $_GET['id_Aprendizaje'];
+        $c_id_DocumentoPersona = $_GET['id_DocumentoPersona'];
         
+        if ($stmt = $conexion->prepare("CALL sp_m_estado_favorito_aprendizaje(?, ?)")) {
+            $stmt->bind_param('ss', $c_id_Aprendizaje, $c_id_DocumentoPersona);
+            
+            if ($stmt->execute()) {
+                $resultado = $stmt->get_result();
+                $json = array();
+                
+                while ($registro = $resultado->fetch_assoc()) {
+                    $result = array(
+                        "perapEstado" => $registro['perapEstado'],
+                        "perapFechaInscripcion" => $registro['perapFechaInscripcion'],
+                        "idAprendizaje" => $registro['idAprendizaje'],
+                        "idDocumentoPersona" => $registro['idDocumentoPersona']
+                    );
+                    $json['update_favoritos'][] = $result;
+                }
+                
+                if (!empty($json)) {
+                    echo json_encode($json);
+                } else {
+                    echo json_encode(['error' => 'No se encontraron registros.']);
+                }
+            } else {
+                echo json_encode(['error' => 'Error en la ejecución de la consulta: ' . $stmt->error]);
+            }
+            $stmt->close();
+        } else {
+            echo json_encode(['error' => 'Error al preparar la consulta: ' . $conexion->error]);
         }
+    } else {
+        echo json_encode(['error' => 'No se proporcionaron todos los parámetros requeridos.']);
+    }
+} else {
+    echo json_encode(['error' => 'Método no permitido. Se requiere una solicitud GET.']);
+}
 
-        mysqli_close($conexion);
-        echo json_encode($json);
+$conexion->close();
 ?>
