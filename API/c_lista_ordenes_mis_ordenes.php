@@ -1,8 +1,6 @@
-<?<?php
+<?php
 include 'conexion.php';
 $conexion->set_charset('utf8');
-
-$json = array();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['sp_idTienda'], $_GET['sp_idOrden'], $_GET['sp_odEstado'], $_GET['sp_odFechaPedido'])) {
@@ -27,19 +25,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                     $json['lista_ordenes'][] = $result;
                 }
             } else {
-                $json['error'] = 'Error en la ejecución de la consulta: ' . $stmt->error;
+                $json['error'] = 'Error en la ejecuciï¿½n de la consulta: ' . $stmt->error;
             }
             $stmt->close();
         } else {
             $json['error'] = 'Error al preparar la consulta: ' . $conexion->error;
         }
     } else {
-        $json['error'] = 'Faltan parámetros requeridos.';
+        $json['error'] = 'Faltan parï¿½metros requeridos.';
     }
 } else {
-    $json['error'] = 'Método no permitido. Se requiere una solicitud GET.';
+    $json['error'] = 'Mï¿½todo no permitido. Se requiere una solicitud GET.';
 }
 
 $conexion->close();
-echo json_encode($json);
 ?>
